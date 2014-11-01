@@ -36,6 +36,38 @@ def common_cost(line,opt)
   return sum
 end
 
+def ext_common_cost(line,opt)
+  sum = 0
+  countries = line.map{ |l| l['country'] }.uniq
+
+  countries.each{ |country|
+    
+    mobile = line.select { |l|
+      (l['type']=='mobile') && l['country']==country
+    }.map{ |l|{'s'=>to_seconds(l['time']),'#'=>l['#']} 
+    }.inject({'s'=>0,'#'=>0}){ |s, l| 
+      {'s'=>s['s']+l['s'],'#'=>s['#']+l['#']}
+    }
+    
+    sum += mobile['#']*opt[country]["opening"] 
+    sum += (mobile['s']/60.0)*opt[country]["minute"] 
+
+    sms = line.select { |l|
+      l['type']=='sms' && l['country']==country
+    }.map{ |l| l['#'] }.inject(:+)
+    sms ||= 0
+    sum += sms*opt[country]["sms"]
+    
+    mms = line.select { |l|
+      l['type']=='mms' && l['country']==country
+    }.map{ |l| l['#'] }.inject(:+) 
+    mms ||= 0
+    sum += mms*opt[country]["mms"]
+  }
+  
+  return sum
+end
+
 @@telia_gr_cost={'opening'=>0.36,'minute'=>3.96,'sms'=>1.5,'mms'=>1.99}
 
 def cost_telia_prata_pa(line)
@@ -73,6 +105,26 @@ def halebob(line)
     })
 end
 
+def tre_pott499(line)
+  return common_cost(line,{
+      'sv'=>{'opening'=>0.69,'minute'=>0.69,'sms'=>0.69,'mms'=>1.69},
+      'gr'=>{'opening'=>0.69,'minute'=>4.95,'sms'=>1.69,'mms'=>80}
+    })
+  #{
+  #  'mobile'=>{
+  #    'sv'=>{
+  #      'tre'=>{'opening'=>0.69,'minute'=>0.19,'sms'=>0.69,'mms'=>1.69},
+  #      'other'=>{'opening'=>0.69,'minute'=>0.69,'sms'=>0.69,'mms'=>1.69}
+  #    },
+  #    'gr'=>{'other'=>{'opening'=>0.69,'minute'=>4.95,'sms'=>2,'mms'=>80}},
+  #  },
+  #  'phone'=>{
+  #    'sv'=>{'opening'=>0.69,'minute'=>0.69},
+  #    'gr'=>{'opening'=>0.69,'minute'=>4.95},
+  #  }
+  #  })
+end
+
 samtal = Samtal.new().get
 p "cost_telia_prata_pa"
 samtal.each{ |k,v|
@@ -93,4 +145,8 @@ samtal.each{ |k,v|
 p "halebob"
 samtal.each{ |k,v|
   p "#{k} = #{halebob(v)}"
+}
+p "tre_pott499"
+samtal.each{ |k,v|
+  p "#{k} = #{tre_pott499(v)}"
 }
